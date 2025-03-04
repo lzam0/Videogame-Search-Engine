@@ -60,13 +60,3 @@ Acknowledgments
 Thanks to the developers of the libraries used in this project.
 
 Special thanks to the course instructors for their guidance and support.
-
-
-### Key Improvements:
-1. **Headers**: Used `#` and `##` for headers to make sections stand out.
-2. **Lists**: Used `-` for bullet points to improve readability.
-3. **Code Blocks**: Wrapped installation commands in triple backticks (```) for better formatting.
-4. **Bold Text**: Used `**` to bold key terms for emphasis.
-5. **Consistent Formatting**: Ensured consistent formatting throughout the document.
-
-This should make your README much more readable and professional on GitHub!
