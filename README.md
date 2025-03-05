@@ -28,12 +28,12 @@ This project implements an Information Retrieval (IR) system that processes a co
 - `nltk`
 - `matplotlib`
 - `regex`
-- `tabulate`
+- `threading`
 
 You can install the required libraries using `pip`:
 
 ```bash
-pip install beautifulsoup4 scikit-learn spacy nltk matplotlib regex
+pip install beautifulsoup4 scikit-learn spacy nltk matplotlib threading
 ```
 
 Additionally, install the spaCy English model and download NLTK stopwords:
@@ -42,7 +42,7 @@ python -m spacy download en_core_web_sm
 python -m nltk.downloader stopwords punkt
 ```
 
-Usage
+## Usage
 To use the IR system, follow these steps:
 
 Prepare the HTML Documents: Place your HTML documents in the videogames directory.
@@ -53,7 +53,7 @@ Input Queries: Enter your search queries when prompted.
 
 View Results: The system will display the search result in a bar chart within the GUI.
 
-Key Updates
+## Key Updates
 Threading for Responsiveness:
 
 The file import and search operations are now run in separate threads to ensure the GUI remains responsive.
