@@ -1,5 +1,6 @@
-# IR Course Work
-
+import tkinter as tk
+from tkinter import scrolledtext, messagebox
+import sys
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -8,27 +9,31 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 import regex as re
 import time
-
-# For Stemming
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+import os
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import threading
 
+# Initialize NLTK and spaCy
 nltk.download('punkt')
 nltk.download('stopwords')
-
-# Get the list of English stopwords
 stop_words = set(stopwords.words('english'))
-
-# Initialize the PorterStemmer
 stemmer = PorterStemmer()
+nlp = spacy.load("en_core_web_sm")
 
-# Load spaCy's English model
-nlp = spacy.load("en_core_web_sm") 
+# Redirect console output to the GUI
+class ConsoleOutput:
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
 
-import os
-from bs4 import BeautifulSoup
+    def write(self, message):
+        self.text_widget.insert(tk.END, message)
+        self.text_widget.see(tk.END)
 
+    def flush(self):
+        pass
 
 def read_html(directory):
     """
@@ -233,10 +238,6 @@ def extract_named_entities(text):
     named_entities = [(ent.text, ent.label_) for ent in doc.ents]
     return named_entities
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 def search_query(query, weighted_documents):
     """
     Searches for the relevance of a given query in a set of weighted documents using cosine similarity.
@@ -263,10 +264,6 @@ def search_query(query, weighted_documents):
     similarity = cosine_similarity(query_vector, tfidf_matrix)
 
     return similarity
-
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def custom_tokenizer(text):
     """
@@ -301,10 +298,6 @@ def custom_tokenizer(text):
             tokens.append(lemmatized_token)
             #tokens.append(stemmed_token)
     return tokens
-
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def efficiency_testing():
     """
@@ -344,43 +337,111 @@ def efficiency_testing():
     plt.grid(True)
     plt.show()
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Main GUI Application
+class SearchApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Search Application")
+        self.root.geometry("1200x800")
 
-def main():
-    directory = 'videogames'
-    
-    # Process HTML files
-    weighted_documents, game_info_list, titles, file_names = read_html(directory)
+        # Initialize variables to store imported data
+        self.weighted_documents = None
+        self.game_info_list = None
+        self.titles = None
+        self.file_names = None
 
-    print(f"{len(game_info_list)} files imported")
-    
-    search_terms = ["ICO", "Okami", "Devil Kings",
-                    "Dynasty Warriors", "Sports Genre Games",
-                    "Hunting Genre Games", "Game Developed By Eurocom",
-                    "Game Published by Activision",
-                      "Game Published by Sony Computer Entertainment",
-                      "Teen PS2 Games"]
-    # Create a loop for input query
-    while True:
-        # User input query
-        query = input("Enter a search query (or type 'stop' to exit): ")
-        
-        # break loop if "stop entered"
-        if query.lower() == "stop":
-            break
+        # Create a frame for the import button
+        import_frame = tk.Frame(root)
+        import_frame.pack(pady=10)
 
-        # Search the query in the weighted documents
-        similarity = search_query(query, weighted_documents)
+        # "Import Games Files" button
+        self.import_button = tk.Button(import_frame, text="Import Games Files", command=self.start_import_thread, font=("Arial", 12))
+        self.import_button.pack(side=tk.LEFT, padx=10)
 
-        # Prepare the results with their similarity scores
+        # Create a frame for the search bar
+        search_frame = tk.Frame(root)
+        search_frame.pack(pady=10)
+
+        # Label and Entry for search query
+        self.label = tk.Label(search_frame, text="Enter your search query:",font=("Arial", 14))
+        self.label.pack(side=tk.LEFT, padx=10)
+
+        self.entry = tk.Entry(search_frame, width=50, font=("Arial", 12))
+        self.entry.pack(side=tk.LEFT, padx=10)
+
+        # Submit button (initially disabled)
+        self.submit_button = tk.Button(search_frame, text="Search", command=self.start_search_thread, font=("Arial", 12), state=tk.DISABLED)
+        self.submit_button.pack(side=tk.LEFT, padx=10)
+
+        # Console-like output area
+        self.console_output = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=120, height=20, font=("Consolas", 10))
+        self.console_output.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+        # Redirect sys.stdout to the console output area
+        sys.stdout = ConsoleOutput(self.console_output)
+
+        # Frame for displaying the graph
+        self.graph_frame = tk.Frame(root)
+        self.graph_frame.pack(pady=10, fill=tk.BOTH, expand=True)
+
+    def start_import_thread(self):
+        """
+        Start the document import process in a separate thread.
+        """
+        # Disable the import button to prevent multiple clicks
+        self.import_button.config(state=tk.DISABLED)
+
+        # Start the import process in a separate thread
+        import_thread = threading.Thread(target=self.import_files)
+        import_thread.start()
+
+    def import_files(self):
+        """
+        Import the HTML files in a separate thread.
+        """
+        self.directory = 'videogames'  # Directory containing the HTML files
+
+        # Import the documents
+        print("Importing files...")
+        self.weighted_documents, self.game_info_list, self.titles, self.file_names = read_html(self.directory)
+        print(f"{len(self.game_info_list)} files imported")
+
+        # Enable the search button after importing
+        self.submit_button.config(state=tk.NORMAL)
+            
+    def start_search_thread(self):
+        """
+        Start the search process in a separate thread.
+        """
+        # Disable the search button to prevent multiple clicks
+        self.submit_button.config(state=tk.DISABLED)
+
+        # Start the search process in a separate thread
+        search_thread = threading.Thread(target=self.on_submit)
+        search_thread.start()
+    def on_submit(self):
+        """
+        Handle the search query when the "Search" button is clicked.
+        """
+        query = self.entry.get()
+        if not query.strip():
+            messagebox.showwarning("Empty Query", "Please enter a search query.")
+            return
+
+        # Clear previous graph
+        for widget in self.graph_frame.winfo_children():
+            widget.destroy()
+
+        # Search the query
+        similarity = search_query(query, self.weighted_documents)
+
+        # Prepare the results
         results = []
         for idx, score in enumerate(similarity[0]):
-            game_info = game_info_list[idx]
+            game_info = self.game_info_list[idx]
             results.append([
-                titles[idx],
-                file_names[idx],
+                self.titles[idx],
+                self.file_names[idx],
                 game_info.get('developer', 'N/A'),
                 game_info.get('publisher', 'N/A'),
                 game_info.get('genre', 'N/A'),
@@ -388,36 +449,25 @@ def main():
                 score
             ])
 
-        # Sort the results by similarity score in descending order
+        # Sort the results by similarity score
         sorted_results = sorted(results, key=lambda x: x[6], reverse=True)
-
-        # Display the top 10 similarity scores
         top_10_results = sorted_results[:10]
 
-        # Define table headers
-        headers = ["Title", "File Name", "Developer", "Publisher", "Genre", "ESRB", "Similarity"]
-
-        # Print table using tabulate
-        print(f"\nResults for query '{query}':")
-        print(tabulate(top_10_results, headers=headers, tablefmt="grid"))
-
-        # Display the data to the user as a graph
+        # Create a bar chart for the results
         top_titles = [result[0] for result in top_10_results]
         top_similarities = [result[6] for result in top_10_results]
 
-        # Create a bar chart for the results
-        plt.figure(figsize=(12, 6))
-        bars = plt.barh(top_titles, top_similarities, color='skyblue')
-        plt.xlabel('Similarity Score')
-        plt.ylabel('Document Title')
-        plt.title(f"Search Results for Query: '{query}'")
-        plt.gca().invert_yaxis()  # Invert y-axis to have the highest score at the top
-        plt.tight_layout()
-        
-        # Include the similarity score next to each bar
+        fig, ax = plt.subplots(figsize=(10, 6))
+        bars = ax.barh(top_titles, top_similarities, color='skyblue')
+        ax.set_xlabel('Similarity Score')
+        ax.set_ylabel('Document Title')
+        ax.set_title(f"Search Results for Query: '{query}'")
+        ax.invert_yaxis()
+
+        # Add similarity scores next to bars
         for bar, similarity in zip(bars, top_similarities):
-            plt.text(
-                bar.get_width() + 0.01,  # Offset to the right of the bar
+            ax.text(
+                bar.get_width() + 0.01,
                 bar.get_y() + bar.get_height() / 2,
                 f"{float(similarity):.4f}",
                 va='center',
@@ -425,12 +475,14 @@ def main():
                 color='black',
                 fontweight='bold'
             )
-        
-        # Display the plot
-        plt.show()
 
-        
+        # Embed the plot in the Tkinter GUI
+        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+# Run the application
 if __name__ == "__main__":
-    #efficiency_testing()
-    #test_stopword_effect()
-    main()
+    root = tk.Tk()
+    app = SearchApp(root)
+    root.mainloop()
